@@ -38,7 +38,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="GSM2SIP Gateway"
+                        android:text="Voip Bridge"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary" />
@@ -448,13 +448,13 @@
                             android:layout_gravity="center_horizontal"
                             android:layout_marginTop="14dp"
                             android:src="@mipmap/ic_launcher"
-                            android:contentDescription="GSM2SIP Gateway" />
+                            android:contentDescription="Voip Bridge" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:gravity="center_horizontal"
-                            android:text="GSM2SIP Gateway"
+                            android:text="Voip Bridge"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_primary"

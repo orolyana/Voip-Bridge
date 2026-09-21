@@ -13,7 +13,9 @@ const state = {
   audioContext: null,
   callingToneTimer: null,
   callStartedAt: null,
-  callTimer: null
+  callTimer: null,
+  callFailed: false,
+  callAttempt: 0
 };
 
 const AUTH_USERNAME = 'Admin';
@@ -53,7 +55,7 @@ function setCallInfo(message) {
 
 function setCallControls(active) {
   callButton.disabled = active;
-  hangupButton.disabled = !active;
+  hangupButton.disabled = !(active || state.callFailed);
   muteButton.disabled = !active;
 }
 
@@ -417,13 +419,18 @@ async function callNumber() {
   }
 
   try {
+    const callAttempt = ++state.callAttempt;
+    state.callFailed = false;
+    setCallControls(true);
     getAudioContext();
     setStatus('Preparing');
     setCallInfo(`Preparing your microphone and connection for ${target}...`);
     log(`Dialing ${target}`);
 
     await ensureAudio();
+    if (callAttempt !== state.callAttempt) return;
     const userAgent = state.userAgent || await setupSip();
+    if (callAttempt !== state.callAttempt) return;
     const targetUri = SIP.UserAgent.makeURI(`sip:${target}@${config.domain}`);
     if (!targetUri) throw new Error('Invalid destination number');
 
@@ -443,7 +450,10 @@ async function callNumber() {
     stopCallingTone();
     state.session = null;
     state.target = null;
-    setCallControls(false);
+    state.callFailed = true;
+    callButton.disabled = false;
+    hangupButton.disabled = false;
+    muteButton.disabled = true;
     const reason = errorReason(error);
     setStatus('Failed');
     setCallInfo(`Call failed: ${reason}`);
@@ -464,11 +474,28 @@ function hangUp() {
       log('Call terminated');
       setStatus('Ended');
       setCallInfo('Call ended by you.');
+      state.callFailed = false;
       setCallControls(false);
     } catch (error) {
       log(`Hangup error: ${error.message}`);
     }
+    return;
   }
+
+  stopCallingTone();
+  stopCallTimer();
+  state.callAttempt += 1;
+  if (state.reconnectTimer) window.clearTimeout(state.reconnectTimer);
+  state.reconnectTimer = null;
+  if (state.localStream) {
+    state.localStream.getTracks().forEach((track) => track.stop());
+    state.localStream = null;
+  }
+  state.callFailed = false;
+  setStatus('Ready');
+  setCallInfo('Call attempt cleared. Enter another number to try again.');
+  log('Call attempt cleared');
+  setCallControls(false);
 }
 
 function toggleMute() {
@@ -508,8 +535,10 @@ async function init() {
     await setupSip();
     log('Browser SIP client initialized');
   } catch (error) {
-    log(`Setup error: ${error.message}`);
+    const reason = errorReason(error, 'SIP client could not initialize.');
+    log(`Setup error: ${reason}`);
     setStatus('Setup error');
+    setCallInfo(`SIP is unavailable: ${reason}`);
     scheduleSipReconnect();
   }
 
