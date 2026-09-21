@@ -1,0 +1,35 @@
+[from-web]
+exten => _X.,1,NoOp(Outbound browser call to ${EXTEN})
+ same => n,Set(DIAL_TARGET=${EXTEN})
+ same => n,Set(CALLERID(all)="Web Dial Pad" <webuser>)
+ ; Add the destination to the gateway leg. The Android gateway reads this
+ ; header and uses the SIM to dial the cellular destination.
+ same => n,Dial(PJSIP/gateway-endpoint,60,b(gsm-forward^s^1(${DIAL_TARGET})))
+ same => n,Hangup()
+
+[gsm-forward]
+exten => s,1,Set(PJSIP_HEADER(add,X-GSM-Forward)=${ARG1})
+ same => n,Return()
+
+[from-gateway]
+exten => _X.,1,NoOp(Inbound GSM call for ${EXTEN} from ${CALLERID(num)})
+ same => n,Dial(PJSIP/web-endpoint,60)
+ same => n,Hangup()
+
+[web-incoming]
+; Web browser can originate a call to the gateway or extension.
+; The dial plan may route to the gateway or to a back-office SIP extension.
+
+[default]
+; Gateway registration target. Keep this simple and explicit.
+exten => _.,1,NoOp(Unknown route)
+ same => n,Hangup()
+
+[phones]
+; Example: web side calls to a regular SIP extension.
+exten => 1000,1,Dial(SIP/1000,20)
+exten => 2000,1,Dial(SIP/2000,20)
+
+[websocket]
+; Browser WebRTC registration lives here.
+; Configure your Asterisk PJSIP/chan_sip stack to place this context in use.

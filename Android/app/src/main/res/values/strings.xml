@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GSM2SIP Gateway</string>
+    <string name="activity_title">GSM2SIP Gateway</string>
+    <string name="channel_name">GSM2SIP Gateway Service</string>
+    <string name="channel_description">Keeps SIP registration active</string>
+    <string name="channel_name_quiet">GSM2SIP Gateway Service (silent)</string>
+    <string name="channel_description_quiet">Keeps SIP registration active, without a status bar icon</string>
+    <string name="notification_title">GSM2SIP Gateway</string>
+    <string name="notification_text_registered">Registered — Ready</string>
+    <string name="notification_text_unregistered">Connecting…</string>
+    <string name="notification_text_call">Call active</string>
+</resources>

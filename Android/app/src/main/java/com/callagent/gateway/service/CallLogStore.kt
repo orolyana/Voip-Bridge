@@ -1,0 +1,92 @@
+package com.callagent.gateway.service
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+
+data class CallLogEntry(
+    val direction: String,  // "IN" or "OUT"
+    val number: String,
+    val timestamp: Long,    // millis since epoch (call start)
+    val durationSec: Long
+)
+
+object CallLogStore {
+    const val TYPE_CALL = "CALL"
+
+    private const val PREFS = "call_log"
+    private const val KEY = "entries"
+
+    /**
+     * Most entries kept.
+     *
+     * Every call end re-parsed the whole array, appended one object and wrote
+     * the lot back as a single SharedPreferences string, and every UI refresh
+     * parsed it again.  Unbounded, that is a string that grows for the life of
+     * the gateway — a few thousand calls in, each call end is rewriting
+     * megabytes.  The list is a recent-calls view; nothing reads past the top
+     * of it.
+     */
+    private const val MAX_ENTRIES = 500
+
+    // In-memory cache — avoids re-parsing JSON from SharedPreferences on every access
+    @Volatile
+    private var cachedEntries: List<CallLogEntry>? = null
+
+    // The call list is a single JSON blob, and a fresh entry append must not
+    // race with a read of the same storage while the UI refreshes it.
+    @Synchronized
+    fun addEntry(context: Context, entry: CallLogEntry) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val arr = JSONArray(prefs.getString(KEY, "[]"))
+        val obj = JSONObject().apply {
+            put("dir", entry.direction)
+            put("num", entry.number)
+            put("ts", entry.timestamp)
+            put("dur", entry.durationSec)
+        }
+        arr.put(obj)
+        // Oldest first in storage, so trim from the front.
+        while (arr.length() > MAX_ENTRIES) arr.remove(0)
+        prefs.edit().putString(KEY, arr.toString()).apply()
+        cachedEntries = null // invalidate cache
+    }
+
+    fun getEntries(context: Context): List<CallLogEntry> {
+        cachedEntries?.let { return it }
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val arr = JSONArray(prefs.getString(KEY, "[]"))
+        val entries = (0 until arr.length()).map { i ->
+            val obj = arr.getJSONObject(i)
+            CallLogEntry(
+                direction = obj.getString("dir"),
+                number = obj.getString("num"),
+                timestamp = obj.getLong("ts"),
+                durationSec = obj.getLong("dur")
+            )
+        }.reversed() // newest first
+        cachedEntries = entries
+        return entries
+    }
+
+    data class Totals(
+        val inCalls: Int, val inDurationSec: Long,
+        val outCalls: Int, val outDurationSec: Long
+    )
+
+    fun getTotals(context: Context): Totals {
+        val entries = getEntries(context)
+        return Totals(
+            inCalls = entries.count { it.direction == "IN" },
+            inDurationSec = entries.filter { it.direction == "IN" }.sumOf { it.durationSec },
+            outCalls = entries.count { it.direction == "OUT" },
+            outDurationSec = entries.filter { it.direction == "OUT" }.sumOf { it.durationSec }
+        )
+    }
+
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY, "[]").apply()
+        cachedEntries = null // invalidate cache
+    }
+}

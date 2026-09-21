@@ -1,0 +1,8 @@
+.git
+.gradle
+build
+app/build
+server/node_modules
+server/certs
+server/.env
+web/node_modules

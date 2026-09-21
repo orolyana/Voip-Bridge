@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GSM2SIP Gateway</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <section id="login-screen" class="login-screen" aria-labelledby="login-title">
+      <form id="login-form" class="login-card">
+        <img class="login-logo" src="./assets/voip-bridge-logo.png" alt="GSM2SIP Gateway" />
+        <p class="eyebrow">Secure access</p>
+        <h1 id="login-title">GSM2SIP Gateway</h1>
+        <p class="login-copy">Sign in to open the browser dialer.</p>
+        <label for="login-username">Username</label>
+        <input id="login-username" name="username" type="text" autocomplete="username" required />
+        <label for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+        <p id="login-error" class="login-error" role="alert" hidden>Invalid username or password.</p>
+        <button class="primary login-button" type="submit">Sign In</button>
+        <p class="developer-credit">Developed by Ibrahim Abas</p>
+      </form>
+    </section>
+
+    <div id="dialer-screen" class="app-shell" hidden>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Call from browser</p>
+          <h1>GSM2SIP Gateway</h1>
+        </div>
+        <div class="topbar-actions">
+          <div id="connection-pill" class="status-pill offline">Offline</div>
+          <button id="menu-button" class="settings-menu-button" type="button" aria-expanded="false" aria-controls="utility-menu">Menu</button>
+          <button id="logout-button" class="logout-button" type="button">Log Out</button>
+        </div>
+      </header>
+
+      <aside id="utility-menu" class="utility-menu" hidden>
+        <section id="runtime-settings" class="settings-box" aria-labelledby="settings-title">
+          <div class="settings-heading">
+            <div>
+              <p class="eyebrow">Runtime settings</p>
+              <h2 id="settings-title">Server &amp; SIP</h2>
+            </div>
+            <button id="refresh-settings-button" class="settings-refresh" type="button">Refresh</button>
+          </div>
+          <p id="settings-message" class="settings-message">Detecting deployed server settings...</p>
+          <dl class="settings-grid">
+            <div><dt>Web server</dt><dd id="setting-server">Not available</dd></div>
+            <div><dt>Environment</dt><dd id="setting-environment">Not available</dd></div>
+            <div><dt>SIP domain</dt><dd id="setting-sip-domain">Not available</dd></div>
+            <div><dt>SIP user</dt><dd id="setting-sip-user">Not available</dd></div>
+            <div><dt>Asterisk WSS</dt><dd id="setting-asterisk">Not available</dd></div>
+            <div><dt>Browser media</dt><dd id="setting-media">Not available</dd></div>
+          </dl>
+        </section>
+
+        <section class="log-box" aria-labelledby="log-title">
+          <h2 id="log-title">Session log</h2>
+          <ul id="log-list"></ul>
+        </section>
+      </aside>
+
+      <main class="dialer-card">
+        <div class="dialer-heading">
+          <p class="eyebrow">Browser phone</p>
+          <span class="dialer-caption">Ready to connect</span>
+        </div>
+        <div class="phone-display">
+          <div class="display-topline">
+            <span class="display-label">Dial number</span>
+            <span id="call-status" class="call-status">Ready</span>
+          </div>
+          <input id="number-input" type="tel" inputmode="tel" placeholder="Enter number" aria-label="Phone number" autocomplete="tel" />
+          <div class="display-controls">
+            <span id="number-hint">Use the keypad below</span>
+            <button id="backspace-button" class="backspace-button" type="button" aria-label="Delete last digit" title="Delete last digit">⌫</button>
+          </div>
+        </div>
+
+        <div class="dial-pad" aria-label="Dial pad">
+          <button class="digit" data-value="1"><strong>1</strong><span></span></button>
+          <button class="digit" data-value="2"><strong>2</strong><span>ABC</span></button>
+          <button class="digit" data-value="3"><strong>3</strong><span>DEF</span></button>
+          <button class="digit" data-value="4"><strong>4</strong><span>GHI</span></button>
+          <button class="digit" data-value="5"><strong>5</strong><span>JKL</span></button>
+          <button class="digit" data-value="6"><strong>6</strong><span>MNO</span></button>
+          <button class="digit" data-value="7"><strong>7</strong><span>PQRS</span></button>
+          <button class="digit" data-value="8"><strong>8</strong><span>TUV</span></button>
+          <button class="digit" data-value="9"><strong>9</strong><span>WXYZ</span></button>
+          <button class="digit" data-value="*"><strong>*</strong><span></span></button>
+          <button class="digit" data-value="0"><strong>0</strong><span></span></button>
+          <button class="digit" data-value="#"><strong>#</strong><span></span></button>
+          <button class="digit plus-key" data-value="+"><strong>+</strong><span>International</span></button>
+        </div>
+
+        <div class="actions">
+          <button id="call-button" class="primary" type="button"><span class="action-icon">⌕</span>Call</button>
+          <button id="hangup-button" class="danger" type="button"><span class="action-icon">×</span>Hang Up</button>
+          <button id="mute-button" class="secondary" type="button"><span class="action-icon">◉</span>Mute</button>
+        </div>
+      </main>
+
+      <audio id="remote-audio" autoplay></audio>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sip.js@0.21.2/dist/sip.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  web2phone:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    env_file:
+      - path: server/.env
+        required: false
+    environment:
+      NODE_ENV: development
+      WEB_HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
