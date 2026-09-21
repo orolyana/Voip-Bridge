@@ -456,3 +456,54 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Final responsive rules override the legacy theme block above. */
+.call-info {
+  min-height: 1.25rem;
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.call-status[data-state="calling"],
+.call-status[data-state="preparing"] { color: #c58a2b; }
+.call-status[data-state="active"] { color: var(--success); }
+.call-status[data-state="failed"],
+.call-status[data-state="invalid-number"] { color: var(--danger); }
+
+button:focus-visible,
+input:focus-visible { outline: 3px solid rgba(53, 199, 255, 0.5); outline-offset: 2px; }
+
+@media (min-width: 760px) {
+  .app-shell { width: min(100% - 3rem, 980px); }
+  .dialer-card { min-width: 0; }
+  .utility-menu { position: static; grid-column: 2; grid-row: 2; padding: 0; background: transparent; border: 0; box-shadow: none; }
+  .dialer-card { grid-column: 1; grid-row: 2; }
+}
+
+@media (max-width: 500px) {
+  body { align-items: start; }
+  .app-shell { width: min(100% - 1rem, 430px); padding: 0.75rem 0 1.25rem; }
+  .topbar { gap: 0.65rem; }
+  .topbar > div:first-child { min-width: 0; }
+  .topbar-actions { gap: 0.35rem; }
+  .status-pill { padding: 0.4rem 0.55rem; font-size: 0.6rem; }
+  .settings-menu-button, .logout-button { padding: 0.45rem 0.55rem; font-size: 0.72rem; }
+  .logout-button { width: auto; }
+  .dialer-card { padding: 0.9rem; }
+  .dial-pad { gap: 0.5rem; margin-bottom: 1rem; }
+  .digit { min-height: clamp(3.8rem, 16vw, 4.6rem); border-radius: 14px; }
+  .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.45rem; }
+  .actions button { min-height: 3.4rem; padding: 0.5rem 0.25rem; font-size: 0.7rem; }
+  .action-icon { display: block; margin: 0 0 0.1rem; }
+  .call-info { font-size: 0.74rem; }
+}
+
+@media (max-width: 350px) {
+  .topbar h1 { font-size: 1.2rem; }
+  .topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .dialer-heading { align-items: flex-start; flex-direction: column; gap: 0.2rem; }
+  .actions { grid-template-columns: 1fr; }
+}

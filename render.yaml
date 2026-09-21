@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: gsm2sip-gateway
+    runtime: node
+    plan: free
+    buildCommand: npm ci --prefix server
+    startCommand: node server/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WEB_HOST
+        value: 0.0.0.0
+      - key: SIP_DOMAIN
+        sync: false
+      - key: SIP_WS_URL
+        sync: false
+      - key: SIP_USERNAME
+        sync: false
+      - key: SIP_PASSWORD
+        sync: false
+      - key: STUN_SERVER_URLS
+        value: stun:stun.l.google.com:19302
+      - key: TURN_SERVER_URLS
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_PASSWORD
+        sync: false

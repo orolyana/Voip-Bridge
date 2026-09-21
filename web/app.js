@@ -9,7 +9,11 @@ const state = {
   log: [],
   reconnectTimer: null,
   reconnectAttempts: 0,
-  reconnecting: false
+  reconnecting: false,
+  audioContext: null,
+  callingToneTimer: null,
+  callStartedAt: null,
+  callTimer: null
 };
 
 const AUTH_USERNAME = 'Admin';
@@ -28,6 +32,7 @@ const callButton = document.getElementById('call-button');
 const hangupButton = document.getElementById('hangup-button');
 const muteButton = document.getElementById('mute-button');
 const callStatus = document.getElementById('call-status');
+const callInfo = document.getElementById('call-info');
 const connectionPill = document.getElementById('connection-pill');
 const logList = document.getElementById('log-list');
 const remoteAudio = document.getElementById('remote-audio');
@@ -41,6 +46,10 @@ const menuButton = document.getElementById('menu-button');
 const utilityMenu = document.getElementById('utility-menu');
 const refreshSettingsButton = document.getElementById('refresh-settings-button');
 const settingsMessage = document.getElementById('settings-message');
+
+function setCallInfo(message) {
+  callInfo.textContent = message;
+}
 
 function setCallControls(active) {
   callButton.disabled = active;
@@ -59,6 +68,78 @@ function log(message) {
 
 function setStatus(label) {
   callStatus.textContent = label;
+  callStatus.dataset.state = label.toLowerCase().replace(/\s+/g, '-');
+}
+
+function getAudioContext() {
+  if (!state.audioContext) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    state.audioContext = new AudioContext();
+  }
+  if (state.audioContext.state === 'suspended') state.audioContext.resume();
+  return state.audioContext;
+}
+
+function playTone(frequency, duration = 0.08, type = 'sine', volume = 0.035) {
+  const context = getAudioContext();
+  if (!context) return;
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  gain.gain.setValueAtTime(volume, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
+  oscillator.connect(gain).connect(context.destination);
+  oscillator.start();
+  oscillator.stop(context.currentTime + duration);
+}
+
+function playButtonTone(value) {
+  const toneMap = { '1': 697, '2': 770, '3': 852, '4': 697, '5': 770, '6': 852, '7': 697, '8': 770, '9': 852, '*': 941, '0': 941, '#': 941, '+': 620 };
+  playTone(toneMap[value] || 620, 0.07, 'sine', 0.025);
+}
+
+function stopCallingTone() {
+  if (state.callingToneTimer) window.clearInterval(state.callingToneTimer);
+  state.callingToneTimer = null;
+}
+
+function startCallingTone() {
+  stopCallingTone();
+  const ring = () => {
+    playTone(440, 0.45, 'sine', 0.025);
+    window.setTimeout(() => playTone(480, 0.45, 'sine', 0.025), 500);
+  };
+  ring();
+  state.callingToneTimer = window.setInterval(ring, 3_000);
+}
+
+function startCallTimer() {
+  state.callStartedAt = Date.now();
+  const update = () => {
+    const elapsed = Math.floor((Date.now() - state.callStartedAt) / 1000);
+    const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const seconds = String(elapsed % 60).padStart(2, '0');
+    setCallInfo(`Connected for ${minutes}:${seconds}`);
+  };
+  update();
+  state.callTimer = window.setInterval(update, 1_000);
+}
+
+function stopCallTimer() {
+  if (state.callTimer) window.clearInterval(state.callTimer);
+  state.callTimer = null;
+  state.callStartedAt = null;
+}
+
+function errorReason(error, fallback = 'Could not place the call.') {
+  const response = error && error.response;
+  const statusCode = error && (error.statusCode || (response && response.statusCode));
+  const message = error && (error.message || error.reason || error.cause);
+  if (statusCode) return `SIP server returned ${statusCode}${message ? `: ${message}` : ''}`;
+  if (message) return String(message).replace(/^Error:\s*/i, '');
+  return fallback;
 }
 
 function setConnectionState(online) {
@@ -74,6 +155,7 @@ function bindDigits() {
       const current = numberInput.value;
       const value = button.dataset.value;
       if (value === '+' && current.length > 0) return;
+      playButtonTone(value);
       numberInput.value = current + value;
       numberInput.focus();
       updateNumberHint();
@@ -279,15 +361,22 @@ function watchSession(session) {
   session.stateChange.addListener((sessionState) => {
     switch (sessionState) {
       case SIP.SessionState.Establishing:
-        setStatus('Ringing');
+        setStatus('Calling');
+        setCallInfo(`Calling ${state.target || 'the destination'}...`);
+        startCallingTone();
         break;
       case SIP.SessionState.Established:
+        stopCallingTone();
         attachRemoteAudio(session);
         setStatus('Active');
         setCallControls(true);
         log('Call connected');
+        setCallInfo('Call connected. Speak normally; your microphone is active.');
+        startCallTimer();
         break;
       case SIP.SessionState.Terminated:
+        stopCallingTone();
+        stopCallTimer();
         setStatus('Ended');
         log('Call ended');
         if (remoteAudio.srcObject) {
@@ -298,6 +387,8 @@ function watchSession(session) {
         state.muted = false;
         muteButton.textContent = 'Mute';
         setCallControls(false);
+        state.target = null;
+        setCallInfo('Call ended. Enter another number to call again.');
         break;
       default:
         break;
@@ -307,28 +398,36 @@ function watchSession(session) {
 
 async function callNumber() {
   if (state.session) {
+    setCallInfo('A call is already in progress. Hang up before starting another call.');
     log('A call is already active');
     return;
   }
   const target = normalizeNumber(numberInput.value);
   if (!target) {
+    setStatus('Ready');
+    setCallInfo('Enter a phone number before pressing Call.');
     log('No number entered');
     return;
   }
   if (!isDialableNumber(target)) {
     log('Enter a valid phone number');
     setStatus('Invalid number');
+    setCallInfo('That number is not valid. Use 3 to 20 digits, optionally starting with +.');
     return;
   }
 
   try {
-    setStatus('Dialing');
+    getAudioContext();
+    setStatus('Preparing');
+    setCallInfo(`Preparing your microphone and connection for ${target}...`);
     log(`Dialing ${target}`);
 
+    await ensureAudio();
     const userAgent = state.userAgent || await setupSip();
     const targetUri = SIP.UserAgent.makeURI(`sip:${target}@${config.domain}`);
     if (!targetUri) throw new Error('Invalid destination number');
 
+    state.target = target;
     state.session = new SIP.Inviter(userAgent, targetUri, {
       sessionDescriptionHandlerOptions: {
         constraints: { audio: true, video: false }
@@ -336,12 +435,19 @@ async function callNumber() {
     });
     watchSession(state.session);
     setCallControls(true);
+    setStatus('Calling');
+    setCallInfo(`Calling ${target}... Waiting for the SIP server.`);
+    startCallingTone();
     await state.session.invite();
   } catch (error) {
+    stopCallingTone();
     state.session = null;
+    state.target = null;
     setCallControls(false);
-    setStatus('Error');
-    log(error.message || 'Could not place call');
+    const reason = errorReason(error);
+    setStatus('Failed');
+    setCallInfo(`Call failed: ${reason}`);
+    log(`Call failed: ${reason}`);
   }
 }
 
@@ -357,6 +463,7 @@ function hangUp() {
       }
       log('Call terminated');
       setStatus('Ended');
+      setCallInfo('Call ended by you.');
       setCallControls(false);
     } catch (error) {
       log(`Hangup error: ${error.message}`);
@@ -375,6 +482,8 @@ function toggleMute() {
     });
   }
   muteButton.textContent = state.muted ? 'Unmute' : 'Mute';
+  playTone(state.muted ? 220 : 330, 0.08, 'sine', 0.025);
+  setCallInfo(state.muted ? 'Microphone muted.' : 'Microphone unmuted.');
   log(state.muted ? 'Microphone muted' : 'Microphone unmuted');
 }
 
